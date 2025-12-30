@@ -1,6 +1,9 @@
 from .operation import Operation
 
+from typeguard import typechecked
 
+
+@typechecked
 class Bytecode:
     def __init__(self) -> None:
         self._operations = []
