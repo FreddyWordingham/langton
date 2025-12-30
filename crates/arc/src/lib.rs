@@ -1,4 +1,5 @@
 use arc_camera::CameraPlugin;
+use arc_canvas::CanvasPlugin;
 use arc_fps::FpsPlugin;
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
@@ -10,6 +11,12 @@ impl Plugin for ArcPlugin {
         // Plugins
         app.add_plugins(DefaultPlugins)
             .add_plugins(EguiPlugin::default())
-            .add_plugins((CameraPlugin, FpsPlugin));
+            .add_plugins((
+                CameraPlugin,
+                CanvasPlugin {
+                    config: Default::default(),
+                },
+                FpsPlugin,
+            ));
     }
 }
