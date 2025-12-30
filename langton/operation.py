@@ -1,4 +1,3 @@
-from __future__ import annotations
 from dataclasses import dataclass
 from typing import Union
 
@@ -7,3 +6,9 @@ from typing import Union
 class Operation:
     name: str
     argument: Union[int, None] = None
+
+    def __str__(self) -> str:
+        if self.argument is None:
+            return self.name
+        else:
+            return f"{self.name} {self.argument}"
