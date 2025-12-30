@@ -1,8 +1,9 @@
-import langton
+from langton import Transpiler
 
+expr = "2 + 3 + -4"
 
 if __name__ == "__main__":
-    expr = "1 + 2 + (40 + -3)"
-    bytecode = langton.transpile(expr)
+    transpiler = Transpiler()
+    bytecode = transpiler.compile(expr)
     print(";; expr:", expr)
     print(bytecode.encode())
