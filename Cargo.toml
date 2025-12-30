@@ -10,6 +10,9 @@ authors = ["Freddy Wordingham"]
 [workspace.dependencies]
 bevy = { version = "0.17", features = ["bevy_dev_tools", "dynamic_linking"] }
 bevy_egui = "0.38"
+bytemuck = { version = "1.24", features = ["extern_crate_alloc"] }
+rand = "0.9"
+rand_chacha = "0.9"
 
 [profile.dev]
 opt-level = 1

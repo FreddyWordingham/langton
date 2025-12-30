@@ -1,6 +1,6 @@
-use bevy::{prelude::*, render::extract_resource::ExtractResource};
+use bevy::{math::U8Vec2, prelude::*, render::extract_resource::ExtractResource};
 
-use super::types::{CanvasUploadOp, ChunkKey, DirtyRect};
+use super::types::{CanvasUploadOp, DirtyRect};
 
 #[derive(Resource, Default)]
 pub struct CanvasImageHandles {
@@ -8,11 +8,11 @@ pub struct CanvasImageHandles {
 }
 
 impl CanvasImageHandles {
-    pub fn new(num_chunks: (u8, u8), handles: Vec<Handle<Image>>) -> Self {
-        debug_assert!(num_chunks.0 > 0);
-        debug_assert!(num_chunks.1 > 0);
+    pub fn new(num_chunks: U8Vec2, handles: Vec<Handle<Image>>) -> Self {
+        debug_assert!(num_chunks.x > 0);
+        debug_assert!(num_chunks.y > 0);
 
-        let total_chunks = (num_chunks.0 as usize) * (num_chunks.1 as usize);
+        let total_chunks = (num_chunks.x as usize) * (num_chunks.y as usize);
         debug_assert_eq!(handles.len(), total_chunks);
 
         Self { handles }
@@ -27,20 +27,19 @@ impl CanvasImageHandles {
 /// CPU backing store: row-major u32 pixels per chunk.
 #[derive(Resource)]
 pub struct CanvasCpuChunks {
-    num_chunks: (u8, u8),
-    chunk_size: (u32, u32),
+    num_chunks: U8Vec2,
     chunk_data: Vec<Vec<u32>>,
 }
 
 impl CanvasCpuChunks {
-    pub fn new(num_chunks: (u8, u8), chunk_size: (u32, u32), default_px: u32) -> Self {
-        debug_assert!(chunk_size.0 > 0);
-        debug_assert!(chunk_size.1 > 0);
-        debug_assert!(num_chunks.0 > 0);
-        debug_assert!(num_chunks.1 > 0);
+    pub fn new(num_chunks: U8Vec2, chunk_size: UVec2, default_px: u32) -> Self {
+        debug_assert!(num_chunks.x > 0);
+        debug_assert!(num_chunks.y > 0);
+        debug_assert!(chunk_size.x > 0);
+        debug_assert!(chunk_size.y > 0);
 
-        let total_chunks = (num_chunks.0 as usize) * (num_chunks.1 as usize);
-        let pixels_per_chunk = (chunk_size.0 as usize) * (chunk_size.1 as usize);
+        let total_chunks = (num_chunks.x as usize) * (num_chunks.y as usize);
+        let pixels_per_chunk = (chunk_size.x as usize) * (chunk_size.y as usize);
 
         // Initialise chunk data
         let mut chunk_data = Vec::with_capacity(total_chunks);
@@ -48,50 +47,76 @@ impl CanvasCpuChunks {
             chunk_data.push(vec![default_px; pixels_per_chunk]);
         }
 
-        Self {
-            num_chunks,
-            chunk_size,
-            chunk_data,
-        }
+        Self { num_chunks, chunk_data }
+    }
+
+    #[inline]
+    fn index(&self, chunk_key: &U8Vec2) -> usize {
+        chunk_key.y as usize * self.num_chunks.x as usize + chunk_key.x as usize
+    }
+
+    pub fn chunk(&self, index: usize) -> &[u32] {
+        debug_assert!(index < self.chunk_data.len());
+        &self.chunk_data[index]
+    }
+
+    #[inline]
+    pub fn chunk_mut(&mut self, chunk_key: &U8Vec2) -> &mut [u32] {
+        debug_assert!(chunk_key.x < self.num_chunks.x);
+        debug_assert!(chunk_key.y < self.num_chunks.y);
+
+        let chunk_index = self.index(chunk_key);
+        &mut self.chunk_data[chunk_index]
     }
 }
 
 /// Dirty tracking per chunk.
 #[derive(Resource)]
 pub struct CanvasDirtyRects {
-    num_chunks: (u8, u8),
+    num_chunks: U8Vec2,
+    chunk_size: UVec2,
     rects: Vec<DirtyRect>,
 }
 
 impl CanvasDirtyRects {
-    pub fn new(num_chunks: (u8, u8)) -> Self {
-        debug_assert!(num_chunks.0 > 0);
-        debug_assert!(num_chunks.1 > 0);
+    pub fn new(num_chunks: U8Vec2, chunk_size: UVec2) -> Self {
+        debug_assert!(num_chunks.x > 0);
+        debug_assert!(num_chunks.y > 0);
+        debug_assert!(chunk_size.x > 0);
+        debug_assert!(chunk_size.y > 0);
 
-        let total_chunks = (num_chunks.0 as usize) * (num_chunks.1 as usize);
+        let total_chunks = (num_chunks.x as usize) * (num_chunks.y as usize);
 
         Self {
             num_chunks,
+            chunk_size,
             rects: vec![DirtyRect::default(); total_chunks],
         }
     }
 
     #[inline(always)]
-    fn index(&self, chunk_key: &ChunkKey) -> usize {
-        (chunk_key.1 as usize) * (self.num_chunks.0 as usize) + (chunk_key.0 as usize)
+    fn index(&self, chunk_key: &U8Vec2) -> usize {
+        chunk_key.y as usize * self.num_chunks.x as usize + chunk_key.x as usize
     }
 
     /// Mark a rect in chunk-local pixel coordinates as dirty.
     #[inline(always)]
-    pub fn mark_rect(&mut self, chunk_key: &ChunkKey, min: UVec2, size: UVec2) {
+    pub fn mark_rect(&mut self, chunk_key: &U8Vec2, min: UVec2, size: UVec2) {
         if size.x == 0 || size.y == 0 {
             return;
         }
 
+        let max_bound = self.chunk_size - UVec2::ONE;
+
+        // Clamp min into bounds first
+        let min = min.min(max_bound);
+
+        // Compute inclusive max, then clamp
+        let max = (min + size - UVec2::ONE).min(max_bound);
+
         let index = self.index(chunk_key);
         let rect = &mut self.rects[index];
 
-        let max = min + size - UVec2::ONE;
         if !rect.dirty {
             rect.dirty = true;
             rect.min = min;

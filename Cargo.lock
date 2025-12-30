@@ -203,8 +203,10 @@ dependencies = [
  "arc_camera",
  "arc_canvas",
  "arc_fps",
+ "arc_random",
  "bevy",
  "bevy_egui",
+ "rand",
 ]
 
 [[package]]
@@ -220,6 +222,7 @@ name = "arc_canvas"
 version = "0.0.0"
 dependencies = [
  "bevy",
+ "bytemuck",
 ]
 
 [[package]]
@@ -227,6 +230,15 @@ name = "arc_fps"
 version = "0.0.0"
 dependencies = [
  "bevy",
+]
+
+[[package]]
+name = "arc_random"
+version = "0.0.0"
+dependencies = [
+ "bevy",
+ "rand",
+ "rand_chacha",
 ]
 
 [[package]]

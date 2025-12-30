@@ -1,9 +1,10 @@
 [package]
-name = "arc_canvas"
+name = "arc_random"
 edition.workspace = true
 version.workspace = true
 authors.workspace = true
 
 [dependencies]
 bevy = { workspace = true }
-bytemuck = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }

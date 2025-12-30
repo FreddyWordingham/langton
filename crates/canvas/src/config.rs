@@ -1,21 +1,21 @@
-use bevy::prelude::*;
+use bevy::{math::U8Vec2, prelude::*};
 
 #[derive(Resource, Clone)]
 pub struct CanvasConfig {
     pub clear_colour: [u8; 4],
     pub canvas_z_index: f32,
-    pub canvas_size: (u32, u32),
-    pub num_chunks: (u8, u8),
+    pub canvas_size: UVec2,
+    pub num_chunks: U8Vec2,
 }
 
 impl CanvasConfig {
-    pub fn new(clear_colour: [u8; 4], canvas_z_index: f32, canvas_size: (u32, u32), chunks: (u8, u8)) -> Self {
-        debug_assert!(canvas_size.0 > 0);
-        debug_assert!(canvas_size.1 > 0);
-        debug_assert!(chunks.0 > 0);
-        debug_assert!(chunks.1 > 0);
-        debug_assert!(canvas_size.0 % chunks.0 as u32 == 0);
-        debug_assert!(canvas_size.1 % chunks.1 as u32 == 0);
+    pub fn new(clear_colour: [u8; 4], canvas_z_index: f32, canvas_size: UVec2, chunks: U8Vec2) -> Self {
+        debug_assert!(canvas_size.x > 0);
+        debug_assert!(canvas_size.y > 0);
+        debug_assert!(chunks.x > 0);
+        debug_assert!(chunks.y > 0);
+        debug_assert!(canvas_size.x % chunks.x as u32 == 0);
+        debug_assert!(canvas_size.y % chunks.y as u32 == 0);
         Self {
             clear_colour,
             canvas_z_index,
@@ -35,27 +35,32 @@ impl CanvasConfig {
     }
 
     #[inline]
-    pub fn chunk_size(&self) -> (u32, u32) {
-        (
-            self.canvas_size.0 / self.num_chunks.0 as u32,
-            self.canvas_size.1 / self.num_chunks.1 as u32,
+    pub fn canvas_size(&self) -> UVec2 {
+        self.canvas_size
+    }
+
+    #[inline]
+    pub fn chunk_size(&self) -> UVec2 {
+        UVec2::new(
+            self.canvas_size.x / self.num_chunks.x as u32,
+            self.canvas_size.y / self.num_chunks.y as u32,
         )
     }
 
     #[inline]
     pub fn pixels_per_chunk(&self) -> usize {
-        let (chunk_width, chunk_height) = self.chunk_size();
-        (chunk_width as usize) * (chunk_height as usize)
+        let chunk_size = self.chunk_size();
+        (chunk_size.x as usize) * (chunk_size.y as usize)
     }
 
     #[inline]
-    pub fn num_chunks(&self) -> (u8, u8) {
+    pub fn num_chunks(&self) -> U8Vec2 {
         self.num_chunks
     }
 
     #[inline]
     pub fn total_chunks(&self) -> usize {
-        (self.num_chunks.0 as usize) * (self.num_chunks.1 as usize)
+        (self.num_chunks.x as usize) * (self.num_chunks.y as usize)
     }
 }
 
@@ -64,8 +69,8 @@ impl Default for CanvasConfig {
         Self {
             clear_colour: [255, 255, 255, 255],
             canvas_z_index: 0.0,
-            canvas_size: (800, 600),
-            num_chunks: (8, 6),
+            canvas_size: UVec2::new(1024, 512),
+            num_chunks: U8Vec2::new(8, 4),
         }
     }
 }

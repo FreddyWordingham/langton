@@ -6,10 +6,10 @@ from typeguard import typechecked
 
 @typechecked
 def print_files(root: Path) -> None:
-    for path in sorted(root.rglob("*.rs")):
+    for path in sorted(root.rglob("*.py")):
         if path.is_file():
             print(path.as_posix())
-            print("```rust")
+            print("```python")
             try:
                 print(path.read_text(encoding="utf-8"))
             except Exception as e:

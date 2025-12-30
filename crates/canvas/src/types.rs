@@ -1,8 +1,5 @@
 use bevy::prelude::*;
 
-#[derive(PartialEq, Copy, Clone, Eq, Hash)]
-pub struct ChunkKey(pub u8, pub u8);
-
 #[derive(Clone)]
 pub struct CanvasUploadOp {
     pub handle: Handle<Image>,
