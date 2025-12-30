@@ -1,0 +1,9 @@
+[package]
+name = "turmites"
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+
+[dependencies]
+arc = { path = "../../crates/arc" }
+bevy = { workspace = true }
