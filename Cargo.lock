@@ -201,10 +201,10 @@ name = "arc"
 version = "0.0.0"
 dependencies = [
  "arc_camera",
- "arc_canvas",
  "arc_fps",
  "arc_random",
  "bevy",
+ "bevy-canvas-2d",
  "bevy_egui",
  "rand",
 ]
@@ -215,14 +215,6 @@ version = "0.0.0"
 dependencies = [
  "bevy",
  "bevy_egui",
-]
-
-[[package]]
-name = "arc_canvas"
-version = "0.0.0"
-dependencies = [
- "bevy",
- "bytemuck",
 ]
 
 [[package]]
@@ -387,6 +379,15 @@ checksum = "76d3ee8652fe0577fd8a99054e147740850140d530be8e044a9be4e23a3e8a24"
 dependencies = [
  "bevy_dylib",
  "bevy_internal",
+]
+
+[[package]]
+name = "bevy-canvas-2d"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4afcf218726f83eeb80cc499afd186d844c4b25f23cb9a5f36746b97efc9e4d4"
+dependencies = [
+ "bevy",
 ]
 
 [[package]]

@@ -1,9 +1,11 @@
 use arc_camera::CameraPlugin;
-use arc_canvas::CanvasPlugin;
 use arc_fps::FpsPlugin;
 use arc_random::RandomPlugin;
-use bevy::prelude::*;
+use bevy::{math::U8Vec2, prelude::*};
+use bevy_canvas_2d::prelude::*;
 use bevy_egui::EguiPlugin;
+
+const BOARD_SIZE: UVec2 = UVec2::new(1024, 1024);
 
 pub struct ArcPlugin;
 
@@ -12,109 +14,131 @@ impl Plugin for ArcPlugin {
         // Plugins
         app.add_plugins(DefaultPlugins)
             .add_plugins(EguiPlugin::default())
-            .add_plugins((
-                CameraPlugin,
-                CanvasPlugin {
-                    config: Default::default(),
+            .add_plugins(CanvasPlugin {
+                config: CanvasConfig {
+                    canvas_size: BOARD_SIZE,
+                    num_chunks: U8Vec2::new(1, 1),
+                    ..default()
                 },
-                FpsPlugin,
-                RandomPlugin,
-            ));
+            })
+            .add_plugins((CameraPlugin, FpsPlugin, RandomPlugin));
+
+        // Resources
+        app.init_resource::<Memory>();
+        app.insert_resource(Time::<Fixed>::from_hz(64.0));
 
         // Systems
-        app.add_systems(Update, mutate_canvas);
+        app.add_systems(Startup, spawn_turmites)
+            .add_systems(FixedUpdate, move_turmites);
     }
 }
 
-use arc_canvas::messages::DrawPixel;
-use arc_random::resources::SeededRng;
-use rand::Rng;
+#[derive(Resource)]
+pub struct Memory {
+    pub data: Vec<u8>,
+}
 
-fn mutate_canvas(mut seeded_rng: ResMut<SeededRng>, mut draw_pixel_msg: MessageWriter<DrawPixel>) {
-    let rng = seeded_rng.rng();
-
-    for _ in 0..10 {
-        let x = rng.random_range(0..1024);
-        let y = rng.random_range(0..512);
-
-        let r = rng.random_range(0..=255);
-        let g = rng.random_range(0..=255);
-        let b = rng.random_range(0..=255);
-        let a = 255;
-        let rgba_u32 = u32::from_ne_bytes([r, g, b, a]);
-
-        draw_pixel_msg.write(DrawPixel {
-            pos: UVec2::new(x, y),
-            rgba_u32,
-        });
+impl Default for Memory {
+    fn default() -> Self {
+        Self {
+            data: vec![0; BOARD_SIZE.element_product() as usize],
+        }
     }
 }
 
-// fn mutate_canvas(mut seeded_rng: ResMut<SeededRng>, mut draw_span_msg: MessageWriter<DrawSpan>) {
-//     let rng = seeded_rng.rng();
+impl Memory {
+    pub fn read(&self, coord: UVec2) -> u8 {
+        let index = coord.y as usize * BOARD_SIZE.x as usize + coord.x as usize;
+        self.data[index]
+    }
 
-//     for _ in 0..10 {
-//         let x = rng.random_range(0..1024);
-//         let y = rng.random_range(0..512);
-//         let l = rng.random_range(10..=50);
+    pub fn write(&mut self, coord: UVec2, value: u8) {
+        let index = coord.y as usize * BOARD_SIZE.x as usize + coord.x as usize;
+        self.data[index] = value;
+    }
+}
 
-//         let r = rng.random_range(0..=255);
-//         let g = rng.random_range(0..=255);
-//         let b = rng.random_range(0..=255);
-//         let a = 255;
-//         let pixel = u32::from_ne_bytes([r, g, b, a]);
-//         let rgba_u32 = vec![pixel; l as usize];
+#[derive(Component)]
+pub struct Turmite {
+    pos: UVec2,
+    state: u8,
+}
 
-//         draw_span_msg.write(DrawSpan {
-//             start: UVec2::new(x, y),
-//             rgba_u32,
-//         });
-//     }
-// }
+fn spawn_turmites(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<ColorMaterial>>) {
+    let coord = UVec2::new(BOARD_SIZE.x / 2, BOARD_SIZE.y / 2);
 
-// fn mutate_canvas(mut seeded_rng: ResMut<SeededRng>, mut draw_rect_msg: MessageWriter<DrawRect>) {
-//     let rng = seeded_rng.rng();
+    commands.spawn((
+        Mesh2d(meshes.add(Circle::new(0.5))),
+        MeshMaterial2d(materials.add(Color::hsl(0.0, 0.7, 0.5))),
+        Turmite { pos: coord, state: 0 }, // start facing North
+        Transform::from_translation(coord_to_world_pos(coord)),
+    ));
+}
 
-//     for _ in 0..10 {
-//         let x = rng.random_range(0..1024);
-//         let y = rng.random_range(0..512);
-//         let w = rng.random_range(10..=10);
-//         let h = rng.random_range(10..=10);
+fn move_turmites(
+    mut draw_pixel_msg: MessageWriter<DrawPixel>,
+    mut memory: ResMut<Memory>,
+    mut query: Query<(&mut Turmite, &mut Transform)>,
+) {
+    for (mut turmite, mut transform) in query.iter_mut() {
+        for _ in 0..1000 {
+            let coord = turmite.pos;
 
-//         let r = rng.random_range(0..=255);
-//         let g = rng.random_range(0..=255);
-//         let b = rng.random_range(0..=255);
-//         let a = 255;
-//         let pixel = u32::from_ne_bytes([r, g, b, a]);
-//         let rgba_u32 = vec![pixel; (w * h) as usize];
+            let input = memory.read(coord);
+            let (delta, new_state, output) = transition(turmite.state, input);
 
-//         draw_rect_msg.write(DrawRect {
-//             start: UVec2::new(x, y),
-//             size: UVec2::new(w, h),
-//             rgba_u32,
-//         });
-//     }
-// }
+            // Move turmite
+            turmite.pos = (coord.as_ivec2() + delta).rem_euclid(BOARD_SIZE.as_ivec2()).as_uvec2();
+            transform.translation = coord_to_world_pos(turmite.pos);
 
-// fn mutate_canvas(mut draw_rect_msg: MessageWriter<DrawRect>, mut seeded_rng: ResMut<SeededRng>, mut pos: Local<UVec2>) {
-//     let rng = seeded_rng.rng();
+            // Update state
+            turmite.state = new_state;
 
-//     pos.x = (pos.x + 7) % 1024;
-//     pos.y = (pos.y + 3) % 512;
+            // Update memory
+            memory.write(coord, output);
+            draw_pixel_msg.write(DrawPixel {
+                pos: coord,
+                rgba_u32: state_to_colour(output),
+            });
+        }
+    }
+}
 
-//     let w = 5;
-//     let h = 5;
+// -- Helpers --
 
-//     let r = rng.random_range(0..=255);
-//     let g = rng.random_range(0..=255);
-//     let b = rng.random_range(0..=255);
-//     let a = 255;
-//     let pixel = u32::from_ne_bytes([r, g, b, a]);
-//     let rgba_u32 = vec![pixel; (w * h) as usize];
+fn coord_to_world_pos(coord: UVec2) -> Vec3 {
+    (Vec2::new(coord.x as f32, coord.y as f32) + Vec2::splat(0.5)
+        - Vec2::new(BOARD_SIZE.x as f32 * 0.5, BOARD_SIZE.y as f32 * 0.5))
+    .extend(1.0)
+}
 
-//     draw_rect_msg.write(DrawRect {
-//         start: UVec2::new(pos.x, pos.y),
-//         size: UVec2::new(w, h),
-//         rgba_u32,
-//     });
-// }
+fn transition(state: u8, input: u8) -> (IVec2, u8, u8) {
+    // Example transition function for a 2-state turmite
+    match (state, input) {
+        (0, 0) => (IVec2::new(1, 0), 1, 1),
+        (1, 0) => (IVec2::new(0, -1), 2, 1),
+        (2, 0) => (IVec2::new(-1, 0), 3, 1),
+        (3, 0) => (IVec2::new(0, 1), 0, 1),
+        (0, 1) => (IVec2::new(-1, 0), 3, 0),
+        (3, 1) => (IVec2::new(0, -1), 2, 0),
+        (2, 1) => (IVec2::new(1, 0), 1, 0),
+        (1, 1) => (IVec2::new(0, 1), 0, 0),
+        _ => unreachable!(),
+    }
+}
+
+fn state_to_colour(state: u8) -> u32 {
+    match state {
+        0 => 0xffffffff, // white
+        1 => 0xff000000, // black
+        _ => {
+            let colour = Color::hsl((state as f32 * 137.508) % 360.0, 0.7, 0.5).to_srgba();
+            pack_rgba8([
+                (colour.red * 255.0) as u8,
+                (colour.green * 255.0) as u8,
+                (colour.blue * 255.0) as u8,
+                255,
+            ])
+        }
+    }
+}
