@@ -1,0 +1,9 @@
+[package]
+name = "arc_langton"
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+
+[dependencies]
+bevy = { workspace = true }
+bevy-canvas-2d = { workspace = true }

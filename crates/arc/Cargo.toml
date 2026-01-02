@@ -7,9 +7,8 @@ authors.workspace = true
 [dependencies]
 arc_camera = { path = "../camera" }
 arc_fps = { path = "../fps" }
+arc_langton = { path = "../langton" }
 arc_random = { path = "../random" }
 bevy = { workspace = true }
-bevy-canvas-2d = { workspace = true }
 bevy_egui = { workspace = true }
-
-rand = { workspace = true }
+bevy-canvas-2d = { workspace = true }

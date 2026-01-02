@@ -202,11 +202,11 @@ version = "0.0.0"
 dependencies = [
  "arc_camera",
  "arc_fps",
+ "arc_langton",
  "arc_random",
  "bevy",
  "bevy-canvas-2d",
  "bevy_egui",
- "rand",
 ]
 
 [[package]]
@@ -222,6 +222,14 @@ name = "arc_fps"
 version = "0.0.0"
 dependencies = [
  "bevy",
+]
+
+[[package]]
+name = "arc_langton"
+version = "0.0.0"
+dependencies = [
+ "bevy",
+ "bevy-canvas-2d",
 ]
 
 [[package]]
